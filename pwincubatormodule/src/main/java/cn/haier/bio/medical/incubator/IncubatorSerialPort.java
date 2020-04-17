@@ -20,7 +20,7 @@ import io.netty.buffer.Unpooled;
 public class IncubatorSerialPort implements PWSerialPortListener {
     private ByteBuf buffer;
     private HandlerThread thread;
-    private LTB760AGHandler handler;
+    private IncubatorHandler handler;
     private PWSerialPortHelper helper;
 
     private boolean enabled = false;
@@ -101,9 +101,9 @@ public class IncubatorSerialPort implements PWSerialPortListener {
 
     private void createHandler() {
         if (EmptyUtils.isEmpty(this.thread) && EmptyUtils.isEmpty(this.handler)) {
-            this.thread = new HandlerThread("LTBSerialPort");
+            this.thread = new HandlerThread("IncubatorSerialPort");
             this.thread.start();
-            this.handler = new LTB760AGHandler(this.thread.getLooper());
+            this.handler = new IncubatorHandler(this.thread.getLooper());
         }
     }
 
@@ -129,7 +129,7 @@ public class IncubatorSerialPort implements PWSerialPortListener {
     }
 
     private void write(byte[] data) {
-        PWLogger.d("LTB Send:" + ByteUtils.bytes2HexString(data, true, ", "));
+        PWLogger.d("Incubator Send:" + ByteUtils.bytes2HexString(data, true, ", "));
         if (this.isInitialized() && this.enabled) {
             this.helper.writeAndFlush(data);
             IncubatorSerialPort.this.switchReadModel();
@@ -221,7 +221,7 @@ public class IncubatorSerialPort implements PWSerialPortListener {
                 continue;
             }
             this.buffer.discardReadBytes();
-            PWLogger.d("LTB Recv:" + ByteUtils.bytes2HexString(data, true, ", "));
+            PWLogger.d("Incubator Recv:" + ByteUtils.bytes2HexString(data, true, ", "));
             this.switchWriteModel();
             if(EmptyUtils.isNotEmpty(this.listener)){
                 this.listener.get().onIncubatorPackageReceived(data);
@@ -229,8 +229,8 @@ public class IncubatorSerialPort implements PWSerialPortListener {
         }
     }
 
-    private class LTB760AGHandler extends Handler {
-        public LTB760AGHandler(Looper looper) {
+    private class IncubatorHandler extends Handler {
+        public IncubatorHandler(Looper looper) {
             super(looper);
         }
 
