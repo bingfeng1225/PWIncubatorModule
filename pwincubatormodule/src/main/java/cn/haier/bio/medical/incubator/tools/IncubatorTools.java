@@ -17,12 +17,6 @@ public class IncubatorTools {
         return true;
     }
 
-    public static boolean checkFrame(byte[] data) {
-        byte[] crc = new byte[]{data[data.length - 2], data[data.length - 1]};
-        byte[] check = ByteUtils.computeCRCCode(data, 2, data.length - 4);
-        return Arrays.equals(crc, check);
-    }
-
     public static int indexOf(ByteBuf haystack, byte[] needle) {
         //遍历haystack的每一个字节
         for (int i = haystack.readerIndex(); i < haystack.writerIndex(); i++) {

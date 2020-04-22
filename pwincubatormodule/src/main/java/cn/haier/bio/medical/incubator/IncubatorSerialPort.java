@@ -209,17 +209,8 @@ public class IncubatorSerialPort implements PWSerialPortListener {
             }
 
             this.buffer.markReaderIndex();
-
             byte[] data = new byte[lenth + 3];
             this.buffer.readBytes(data, 0, data.length);
-
-            if (!IncubatorTools.checkFrame(data)) {
-                this.buffer.resetReaderIndex();
-                //当前包不合法 丢掉正常的包头以免重复判断
-                this.buffer.skipBytes(IncubatorTools.HEADER.length);
-                this.buffer.discardReadBytes();
-                continue;
-            }
             this.buffer.discardReadBytes();
             PWLogger.d("Incubator Recv:" + ByteUtils.bytes2HexString(data, true, ", "));
             this.switchWriteModel();
