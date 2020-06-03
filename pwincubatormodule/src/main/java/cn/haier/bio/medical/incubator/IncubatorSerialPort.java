@@ -208,7 +208,6 @@ public class IncubatorSerialPort implements PWSerialPortListener {
                 break;
             }
 
-            this.buffer.markReaderIndex();
             byte[] data = new byte[lenth + 3];
             this.buffer.readBytes(data, 0, data.length);
             this.buffer.discardReadBytes();
