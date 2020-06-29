@@ -8,7 +8,6 @@ import android.os.Message;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 
-import cn.qd.peiwen.pwlogger.PWLogger;
 import cn.qd.peiwen.serialport.PWSerialPortHelper;
 import cn.qd.peiwen.serialport.PWSerialPortListener;
 import cn.qd.peiwen.serialport.PWSerialPortState;
@@ -132,7 +131,7 @@ class IncubatorSerialPort implements PWSerialPortListener {
         }
         this.helper.writeAndFlush(data);
         IncubatorSerialPort.this.switchReadModel();
-        PWLogger.d("Incubator Send:" + IncubatorTools.bytes2HexString(data, true, ", "));
+        this.loggerPrint("IncubatorSerialPort Send:" + IncubatorTools.bytes2HexString(data, true, ", "));
     }
 
     public void switchReadModel() {
@@ -147,6 +146,12 @@ class IncubatorSerialPort implements PWSerialPortListener {
         }
     }
 
+    private void loggerPrint(String message){
+        if (null != this.listener && null != this.listener.get()) {
+            this.listener.get().onIncubatorPrint(message);
+        }
+    }
+
     private boolean ignorePackage() {
         boolean result = false;
         int index = IncubatorTools.indexOf(this.buffer, IncubatorTools.HEADER);
@@ -155,7 +160,7 @@ class IncubatorSerialPort implements PWSerialPortListener {
             byte[] data = new byte[index];
             this.buffer.readBytes(data, 0, data.length);
             this.buffer.discardReadBytes();
-            PWLogger.d("指令丢弃:" + IncubatorTools.bytes2HexString(data, true, ", "));
+            this.loggerPrint("IncubatorSerialPort 指令丢弃:" + IncubatorTools.bytes2HexString(data, true, ", "));
         }
         return result;
     }
@@ -175,7 +180,12 @@ class IncubatorSerialPort implements PWSerialPortListener {
 
     @Override
     public void onReadThreadReleased(PWSerialPortHelper helper) {
-
+        if (!this.isInitialized() || !helper.equals(this.helper)) {
+            return;
+        }
+        if (null != this.listener && null != this.listener.get()) {
+            this.listener.get().onIncubatorPrint("IncubatorSerialPort read thread released");
+        }
     }
 
     @Override
@@ -190,7 +200,12 @@ class IncubatorSerialPort implements PWSerialPortListener {
 
     @Override
     public void onStateChanged(PWSerialPortHelper helper, PWSerialPortState state) {
-
+        if (!this.isInitialized() || !helper.equals(this.helper)) {
+            return;
+        }
+        if (null != this.listener && null != this.listener.get()) {
+            this.listener.get().onIncubatorPrint("IncubatorSerialPort state changed: " + state.name());
+        }
     }
 
     @Override
@@ -220,7 +235,7 @@ class IncubatorSerialPort implements PWSerialPortListener {
             byte[] data = new byte[lenth + 3];
             this.buffer.readBytes(data, 0, data.length);
             this.buffer.discardReadBytes();
-            PWLogger.d("Incubator Recv:" + IncubatorTools.bytes2HexString(data, true, ", "));
+            this.loggerPrint("IncubatorSerialPort Recv:" + IncubatorTools.bytes2HexString(data, true, ", "));
             this.switchWriteModel();
             if (null != this.listener && null != this.listener.get()) {
                 this.listener.get().onIncubatorPackageReceived(data);
