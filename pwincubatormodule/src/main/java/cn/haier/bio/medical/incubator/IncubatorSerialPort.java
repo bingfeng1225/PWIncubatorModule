@@ -146,25 +146,57 @@ class IncubatorSerialPort implements PWSerialPortListener {
         }
     }
 
-    private void loggerPrint(String message){
+    private void loggerPrint(String message) {
         if (null != this.listener && null != this.listener.get()) {
             this.listener.get().onIncubatorPrint(message);
         }
     }
 
     private boolean ignorePackage() {
-        boolean result = false;
         int index = IncubatorTools.indexOf(this.buffer, IncubatorTools.HEADER);
         if (index != -1) {
-            result = true;
             byte[] data = new byte[index];
             this.buffer.readBytes(data, 0, data.length);
             this.buffer.discardReadBytes();
             this.loggerPrint("IncubatorSerialPort 指令丢弃:" + IncubatorTools.bytes2HexString(data, true, ", "));
+            return this.processBytesBuffer();
         }
-        return result;
+        return false;
     }
 
+    private boolean processBytesBuffer() {
+        if (this.buffer.readableBytes() < 3) {
+            return true;
+        }
+        byte[] header = new byte[IncubatorTools.HEADER.length];
+        this.buffer.getBytes(0, header);
+
+        if (!IncubatorTools.checkHeader(header)) {
+            return this.ignorePackage();
+        }
+        int lenth = 0xFF & this.buffer.getByte(2);
+
+        if (this.buffer.readableBytes() < lenth + 3) {
+            return true;
+        }
+        this.buffer.markReaderIndex();
+        byte[] data = new byte[lenth + 3];
+        this.buffer.readBytes(data, 0, lenth);
+        if (!IncubatorTools.checkFrame(data)) {
+            this.buffer.resetReaderIndex();
+            //当前包不合法 丢掉正常的包头以免重复判断
+            this.buffer.skipBytes(2);
+            this.buffer.discardReadBytes();
+            return this.ignorePackage();
+        }
+        this.buffer.discardReadBytes();
+        this.loggerPrint("IncubatorSerialPort Recv:" + IncubatorTools.bytes2HexString(data, true, ", "));
+        this.switchWriteModel();
+        if (null != this.listener && null != this.listener.get()) {
+            this.listener.get().onIncubatorPackageReceived(data);
+        }
+        return true;
+    }
 
     @Override
     public void onConnected(PWSerialPortHelper helper) {
@@ -209,38 +241,13 @@ class IncubatorSerialPort implements PWSerialPortListener {
     }
 
     @Override
-    public void onByteReceived(PWSerialPortHelper helper, byte[] buffer, int length) throws IOException {
+    public boolean onByteReceived(PWSerialPortHelper helper, byte[] buffer, int length) throws IOException {
         if (!this.isInitialized() || !helper.equals(this.helper)) {
-            return;
+            return false;
         }
         this.buffer.writeBytes(buffer, 0, length);
 
-        while (this.buffer.readableBytes() >= 3) {
-            byte[] header = new byte[IncubatorTools.HEADER.length];
-            this.buffer.getBytes(0, header);
-
-            if (!IncubatorTools.checkHeader(header)) {
-                if (this.ignorePackage()) {
-                    continue;
-                } else {
-                    break;
-                }
-            }
-            int lenth = 0xFF & this.buffer.getByte(2);
-
-            if (this.buffer.readableBytes() < lenth + 3) {
-                break;
-            }
-
-            byte[] data = new byte[lenth + 3];
-            this.buffer.readBytes(data, 0, data.length);
-            this.buffer.discardReadBytes();
-            this.loggerPrint("IncubatorSerialPort Recv:" + IncubatorTools.bytes2HexString(data, true, ", "));
-            this.switchWriteModel();
-            if (null != this.listener && null != this.listener.get()) {
-                this.listener.get().onIncubatorPackageReceived(data);
-            }
-        }
+        return this.processBytesBuffer();
     }
 
     private class IncubatorHandler extends Handler {
