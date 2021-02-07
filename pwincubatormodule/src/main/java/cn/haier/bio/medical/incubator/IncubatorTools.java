@@ -18,7 +18,7 @@ class IncubatorTools {
     }
 
     public static boolean checkFrame(byte[] data) {
-        byte[] crc = new byte[]{data[data.length - 2], data[data.length - 1]};
+        byte[] crc = new byte[]{data[data.length - 1], data[data.length - 2]};
         byte[] check = computeCRC16Code(data, 2, data.length - 4);
         return Arrays.equals(crc, check);
     }
